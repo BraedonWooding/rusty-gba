@@ -1,8 +1,13 @@
+use arbitrary_int::prelude::*;
 use bitbybit::{bitenum, bitfield};
 use bitpatterns::{BitPattern, bitpattern};
+use zerocopy_derive::IntoBytes;
 
-#[derive(Debug)]
+use crate::state::Register;
+
+#[derive(Debug, IntoBytes)]
 #[bitenum(u4, exhaustive = true)]
+#[repr(u8)]
 pub enum Condition {
     Equal = 0,                  // EQ (Z = 1, same)
     NotEqual = 1,               // NE (Z = 0, not same)
@@ -20,6 +25,29 @@ pub enum Condition {
     SignedLessOrEqual = 13,     // LE (Z = 1 or N != V)
     Always = 14,                // AL (always execute)
     Never = 15,                 // NV (never execute)
+}
+
+impl Condition {
+    pub fn suffix(&self) -> &'static str {
+        match self {
+            Condition::Equal => "eq",
+            Condition::NotEqual => "ne",
+            Condition::UnsignedGreaterOrEqual => "cs",
+            Condition::UnsignedLess => "cc",
+            Condition::SignedNegative => "mi",
+            Condition::SignedPositiveOrZero => "pl",
+            Condition::SignedOverflow => "vs",
+            Condition::SignedNoOverflow => "vc",
+            Condition::UnsignedHigher => "hi",
+            Condition::UnsignedLessOrEqual => "ls",
+            Condition::SignedGreaterOrEqual => "ge",
+            Condition::SignedLess => "lt",
+            Condition::SignedGreater => "gt",
+            Condition::SignedLessOrEqual => "le",
+            Condition::Always => "al",
+            Condition::Never => "nv",
+        }
+    }
 }
 
 const DATA_PROCESSING_BIT_PATTERN: BitPattern<u32> =
@@ -57,115 +85,133 @@ const SOFTWARE_INTERRUPT_BIT_PATTERN: BitPattern<u32> =
 
 // TODO: This default value may be wrong.
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct Undefined {
-    #[bits(0..=27)]
+    #[bits(0..=27, rw)]
     pub unused: u28, // All bits are unused in this case
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct DataProcessing {
-    #[bits(0..=11)]
+    #[bits(0..=11, rw)]
     pub operand2: u12,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_operand: Register,
-    #[bit(20)]
+    #[bit(20, rw)]
     pub set_condition_codes: bool,
-    #[bits(21..=24)]
+    #[bits(21..=24, rw)]
     pub opcode: u4,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct Multiply {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_operand1: Register,
-    #[bits(4..=7)]
+    #[bits(4..=7, rw)]
     pub unused: u4,
-    #[bits(8..=11)]
+    #[bits(8..=11, rw)]
     pub rs_operand2: Register,
     // Used as the accumulator register i.e. rd = rm * rs + rn when accumulate is set
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rn_accumulator: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rd_dest: Register,
-    #[bit(20)]
-    pub setConditionCodes: bool,
-    #[bit(21)]
+    #[bit(20, rw)]
+    pub set_condition_codes: bool,
+    #[bit(21, rw)]
     pub accumulate: bool,
-    #[bits(22..=27)]
+    #[bits(22..=27, rw)]
     pub unused2: u6,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct MultiplyLong {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_operand1: Register,
-    #[bits(4..=7)]
+    #[bits(4..=7, rw)]
     pub unused: u4,
-    #[bits(8..=11)]
+    #[bits(8..=11, rw)]
     pub rn_operand2: Register,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rdlo_destlo: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rdhi_desthi: Register,
-    #[bit(20)]
-    pub setConditionCodes: bool,
+    #[bit(20, rw)]
+    pub set_condition_codes: bool,
     // If set will use rdhi/rdlo as the accumulator registers
-    #[bit(21)]
+    #[bit(21, rw)]
     pub accumulate: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub signed: bool,
-    #[bits(23..=27)]
+    #[bits(23..=27, rw)]
     pub unused2: u5,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitenum(u1, exhaustive = true)]
+#[derive(Debug, IntoBytes)]
+#[repr(u8)]
 pub enum DataLength {
     Byte = 1,
     // 32 bit
     Word = 0,
 }
 
+impl DataLength {
+    pub fn suffix(&self) -> &'static str {
+        match self {
+            // We don't have an output for word
+            DataLength::Byte => "b",
+            DataLength::Word => "",
+        }
+    }
+}
+
 // Rd = [Rn], Rn = [Rm]
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct SingleDataSwap {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_source: Register,
-    #[bits(4..=11)]
+    #[bits(4..=11, rw)]
     pub unused: u8,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
-    #[bits(20..=21)]
+    #[bits(20..=21, rw)]
     pub unused2: u2,
     // Swap bytes or words
-    #[bit(22)]
+    #[bit(22, rw)]
     pub b_length: DataLength,
-    #[bits(23..=27)]
-    pub unused2: u5,
-    #[bits(28..=31)]
+    #[bits(23..=27, rw)]
+    pub unused3: u5,
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct BranchAndExchange {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rn_operand: Register,
-    #[bits(4..=27)]
+    #[bits(4..=27, rw)]
     pub unused: u24,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
@@ -173,6 +219,8 @@ pub struct BranchAndExchange {
 // but we still have "load" instructions.  And realistically we only have 1
 // that does really anything (outside of writebacks), which is StoreHalfword.
 #[bitenum(u2, exhaustive = true)]
+#[derive(Debug, IntoBytes)]
+#[repr(u8)]
 pub enum HalfwordOperandStore {
     // Should not be used.
     Reserved = 0,
@@ -184,6 +232,8 @@ pub enum HalfwordOperandStore {
 }
 
 #[bitenum(u2, exhaustive = true)]
+#[derive(Debug, IntoBytes)]
+#[repr(u8)]
 pub enum HalfwordOperandLoad {
     // Should not be used.
     Reserved = 0,
@@ -193,178 +243,223 @@ pub enum HalfwordOperandLoad {
 }
 
 #[bitenum(u1, exhaustive = true)]
+#[derive(Debug, IntoBytes)]
+#[repr(u8)]
 pub enum OffsetMode {
     SubtractOffsetFromBase = 0, // Down
     AddOffsetToBase = 1,        // Up
 }
 
+impl OffsetMode {
+    pub fn sign(&self) -> &'static str {
+        match self {
+            OffsetMode::SubtractOffsetFromBase => "-",
+            OffsetMode::AddOffsetToBase => "+",
+        }
+    }
+}
+
 #[bitenum(u1, exhaustive = true)]
+#[derive(Debug, IntoBytes, PartialEq, Eq)]
+#[repr(u8)]
 pub enum IndexingMode {
-    AddOffsetAfterTransfer = 0,  // Post
-    AddOffsetBeforeTransfer = 1, // Pre
+    // Post (p = 0)
+    AddOffsetAfterTransfer = 0,
+    // Pre (p = 1)
+    AddOffsetBeforeTransfer = 1,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct HalfwordDataTransferRegisterStore {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_source: Register,
-    #[bit(4)]
+    #[bit(4, rw)]
     pub unused: bool,
-    #[bits(5..=6)]
+    #[bits(5..=6, rw)]
     pub opcode: HalfwordOperandStore,
-    #[bits(7..=11)]
+    #[bits(7..=11, rw)]
     pub unused_2: u5,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
     // Will be 0 in this case since we are a store.
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
     // Is ignored in the case that P = 0
     // but the value should be 0 still!
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub unused_3: bool,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
-    pub unused_3: u3,
-    #[bits(28..=31)]
+    #[bits(25..=27, rw)]
+    pub unused_4: u3,
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct HalfwordDataTransferRegisterLoad {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_source: Register,
-    #[bit(4)]
+    #[bit(4, rw)]
     pub unused: bool,
-    #[bits(5..=6)]
+    #[bits(5..=6, rw)]
     pub opcode: HalfwordOperandLoad,
-    #[bits(7..=11)]
+    #[bits(7..=11, rw)]
     pub unused_2: u5,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
     // Will be 1 in this case since we are a load.
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
     // Is ignored in the case that P = 0
     // but the value should be 0 still!
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub unused_3: bool,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
-    pub unused_3: u3,
-    #[bits(28..=31)]
+    #[bits(25..=27, rw)]
+    pub unused_4: u3,
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct HalfwordDataTransferImmediateStore {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub offset: u4,
-    #[bit(4)]
+    #[bit(4, rw)]
     pub unused: bool,
-    #[bits(5..=6)]
+    #[bits(5..=6, rw)]
     pub opcode: HalfwordOperandStore,
-    #[bit(7)]
+    #[bit(7, rw)]
     pub unused_2: bool,
-    #[bits(8..=11)]
+    #[bits(8..=11, rw)]
     pub offset2: u4,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
     // Will be 0 in this case since we are a store.
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
     // Is ignored in the case that P = 0
     // but the value should be 0 still!
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub unused_3: bool,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused_4: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct HalfwordDataTransferImmediateLoad {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub offset: u4,
-    #[bit(4)]
+    #[bit(4, rw)]
     pub unused: bool,
-    #[bits(5..=6)]
+    #[bits(5..=6, rw)]
     pub opcode: HalfwordOperandLoad,
-    #[bit(7)]
+    #[bit(7, rw)]
     pub unused_2: bool,
-    #[bits(8..=11)]
+    #[bits(8..=11, rw)]
     pub offset2: u4,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
     // Will be 1 in this case since we are a load.
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
     // Is ignored in the case that P = 0
     // but the value should be 0 still!
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub unused_3: bool,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused_4: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct SingleDataTransferImmediate {
-    #[bits(0..=11)]
+    #[bits(0..=11, rw)]
     pub offset: u12,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub b_length: DataLength,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
+}
+
+impl SingleDataTransferImmediate {
+    pub fn addressing_mode(&self) -> String {
+        if self.indexing() == IndexingMode::AddOffsetAfterTransfer {
+            format!(
+                "[{}], #{}{}",
+                self.rn_base().to_string(),
+                self.offset_mode().sign(),
+                self.offset()
+            )
+        } else if self.offset() == u12::new(0) {
+            format!("[{}]", self.rn_base().to_string())
+        } else {
+            format!(
+                "[{}, #{}{}]{}",
+                self.rn_base().to_string(),
+                self.offset_mode().sign(),
+                self.offset(),
+                if self.writeback() { "!" } else { "" }
+            )
+        }
+    }
 }
 
 #[bitenum(u2, exhaustive = true)]
+#[derive(Debug, IntoBytes)]
+#[repr(u8)]
 pub enum ShiftType {
     Lsl = 0, // Logical Shift Left
     Lsr = 1, // Logical Shift Right
@@ -372,13 +467,25 @@ pub enum ShiftType {
     Ror = 3, // Rotate Right
 }
 
+impl ShiftType {
+    pub fn suffix(&self) -> &'static str {
+        match self {
+            ShiftType::Lsl => "lsl",
+            ShiftType::Lsr => "lsr",
+            ShiftType::Asr => "asr",
+            ShiftType::Ror => "ror",
+        }
+    }
+}
+
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct SingleDataTransferShiftedRegister {
-    #[bits(0..=3)]
+    #[bits(0..=3, rw)]
     pub rm_offset: Register,
-    #[bit(4)]
+    #[bit(4, rw)]
     pub unused: bool,
-    #[bits(5..=6)]
+    #[bits(5..=6, rw)]
     pub shift_type: ShiftType,
     /*
       1-31, 0 means
@@ -387,75 +494,168 @@ pub struct SingleDataTransferShiftedRegister {
     ASR#0: Interpreted as ASR#32, ie. Op2 and C are filled by Bit 31 of Rm.
     ROR#0: Interpreted as RRX#1 (RCR), like ROR#1, but Op2 Bit 31 set to old C.
        */
-    #[bits(7..=11)]
+    #[bits(7..=11, rw)]
     pub shift_amount: u5,
-    #[bits(12..=15)]
+    #[bits(12..=15, rw)]
     pub rd_dest: Register,
-    #[bits(16..=19)]
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
-    #[bit(22)]
+    #[bit(22, rw)]
     pub b_length: DataLength,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused_2: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
+impl SingleDataTransferShiftedRegister {
+    pub fn shift(&self) -> String {
+        if self.shift_amount() == u5::new(0) {
+            String::new()
+        } else {
+            format!(
+                ", {} #{:08x}",
+                self.shift_type().suffix(),
+                self.shift_amount()
+            )
+        }
+    }
+
+    pub fn addressing_mode(&self) -> String {
+        if self.indexing() == IndexingMode::AddOffsetAfterTransfer {
+            format!(
+                "[{}], {}{}{}",
+                self.rn_base().to_string(),
+                self.offset_mode().sign(),
+                self.rm_offset().to_string(),
+                self.shift()
+            )
+        } else {
+            format!(
+                "[{}, {}{}{}]{}",
+                self.rn_base().to_string(),
+                self.offset_mode().sign(),
+                self.rm_offset().to_string(),
+                self.shift(),
+                if self.writeback() { "!" } else { "" }
+            )
+        }
+    }
+}
+
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct BlockDataTransfer {
     // TODO: There seems to be some really weird cases around usermode and banked registers
-    #[bits(0..=15)]
-    pub register_list: u16,
-    #[bits(16..=19)]
+    #[bit(0, rw)]
+    pub register_list: [bool; 16],
+    #[bits(16..=19, rw)]
     pub rn_base: Register,
-    #[bit(20)]
+    #[bit(20, rw)]
     pub load: bool,
-    #[bit(21)]
+    #[bit(21, rw)]
     pub writeback: bool,
     // S = 0/1, No/Load PSR and force user mode
-    #[bit(22)]
+    #[bit(22, rw)]
     pub usermode: bool,
-    #[bit(23)]
-    pub offsetMode: OffsetMode,
-    #[bit(24)]
+    #[bit(23, rw)]
+    pub offset_mode: OffsetMode,
+    #[bit(24, rw)]
     pub indexing: IndexingMode,
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
+impl BlockDataTransfer {
+    pub fn addressing_mode_suffix(&self) -> &'static str {
+        match (self.indexing(), self.offset_mode()) {
+            (IndexingMode::AddOffsetAfterTransfer, OffsetMode::SubtractOffsetFromBase) => "fa", // da
+            (IndexingMode::AddOffsetBeforeTransfer, OffsetMode::SubtractOffsetFromBase) => "ea", // db
+            (IndexingMode::AddOffsetAfterTransfer, OffsetMode::AddOffsetToBase) => "fd", // ia
+            (IndexingMode::AddOffsetBeforeTransfer, OffsetMode::AddOffsetToBase) => "ed", // ib
+        }
+    }
+
+    pub fn register_list_string(&self) -> String {
+        // This will produce a string like "r0-r3, r5, r7-r15"
+        let mut registers = Vec::new();
+        let mut range_start = None;
+
+        for i in 0..16 {
+            let bit = self.register_list(i);
+            if bit {
+                if range_start.is_none() {
+                    range_start = Some(i);
+                }
+            } else {
+                if let Some(start) = range_start {
+                    // If we only have a single register, we just output it
+                    if start - i == 1 {
+                        registers.push(format!("r{}", start));
+                    } else {
+                        registers.push(format!("r{}-r{}", start, i - 1));
+                    }
+                    range_start = None;
+                }
+            }
+        }
+
+        // Handle the last range if it exists
+        if let Some(start) = range_start {
+            registers.push(format!("r{}", start));
+        }
+
+        registers.join(", ")
+    }
+}
+
 #[bitfield(u32)]
+#[derive(Debug, IntoBytes)]
 pub struct Branch {
-    #[bits(0..=23)]
-    pub offset: s24, // 24 bit signed offset
-    #[bit(24)]
+    #[bits(0..=23, rw)]
+    pub offset: u24, // 24 bit signed offset
+    #[bit(24, rw)]
     pub link: bool, // L = 1 means link, L = 0 means branch
-    #[bits(25..=27)]
+    #[bits(25..=27, rw)]
     pub unused: u3,
-    #[bits(28..=31)]
+    #[bits(28..=31, rw)]
     pub condition: Condition,
+}
+
+impl Branch {
+    pub fn signed_offset(&self) -> i24 {
+        // Sign extend the 24 bit offset
+        self.offset().as_::<i24>()
+    }
 }
 
 // TODO: Maybe we support breakpoints at some point?
 // they don't seeem to much more complex!
 #[bitfield(u32)]
+#[derive(IntoBytes)]
 pub struct SoftwareInterrupt {
-    #[bits(0..=27)]
-    pub unused: u28,
-    #[bits(28..=31)]
+    // Ignored by processor, but we output it for debugging
+    #[bits(0..=23, rw)]
+    pub immediate: u24,
+    #[bits(24..=27, rw)]
+    pub unused: u4, // Unused bits
+    #[bits(28..=31, rw)]
     pub condition: Condition,
 }
 
 // This is ordered in the same way as the ARMv7-A documentation
+#[derive(IntoBytes)]
+#[repr(u32)]
 pub enum OpCode {
     DataProcessing(DataProcessing),
     Multiply(Multiply),
@@ -473,7 +673,7 @@ pub enum OpCode {
     Branch(Branch),
     // Note: we don't handle Coprocessor instructions
     SoftwareInterrupt(SoftwareInterrupt),
-    Invalid,
+    Invalid(u32),
 }
 
 // Up to block!
@@ -535,7 +735,122 @@ impl From<u32> for OpCode {
 
             // TODO: I doubt that GBA does this.  But it doesn't look like it treats them
             // as undefined instructions.
-            OpCode::Invalid
+            OpCode::Invalid(value)
+        }
+    }
+}
+
+impl ToString for OpCode {
+    fn to_string(&self) -> String {
+        // This writes it out using the ASM syntax
+        match self {
+            OpCode::DataProcessing(data_processing) => todo!(),
+            OpCode::Multiply(multiply) => todo!(),
+            OpCode::MultiplyLong(multiply_long) => todo!(),
+            OpCode::SingleDataSwap(single_data_swap) => todo!(),
+            OpCode::BranchAndExchange(branch_and_exchange) => todo!(),
+            OpCode::HalfwordDataTransferRegisterStore(halfword_data_transfer_register_store) => {
+                todo!()
+            }
+            OpCode::HalfwordDataTransferRegisterLoad(halfword_data_transfer_register_load) => {
+                todo!()
+            }
+            OpCode::HalfwordDataTransferImmediateStore(halfword_data_transfer_immediate_store) => {
+                todo!()
+            }
+            OpCode::HalfwordDataTransferImmediateLoad(halfword_data_transfer_immediate_load) => {
+                todo!()
+            }
+            OpCode::SingleDataTransferImmediate(single_data_transfer_immediate) => format!(
+                "{}{}{}{} {},{}",
+                if single_data_transfer_immediate.load() {
+                    "ldr"
+                } else {
+                    "str"
+                },
+                single_data_transfer_immediate.condition().suffix(),
+                single_data_transfer_immediate.b_length().suffix(),
+                // In this specific case only we output our memory management bit!
+                // TODO: Is this even needed??
+                if single_data_transfer_immediate.indexing() == IndexingMode::AddOffsetAfterTransfer
+                    && single_data_transfer_immediate.writeback()
+                {
+                    "T"
+                } else {
+                    ""
+                },
+                single_data_transfer_immediate.rd_dest().to_string(),
+                single_data_transfer_immediate.addressing_mode(),
+            ),
+            OpCode::SingleDataTransferShiftedRegister(single_data_transfer_shifted_register) => {
+                format!(
+                    "{}{}{}{} {},{}",
+                    if single_data_transfer_shifted_register.load() {
+                        "ldr"
+                    } else {
+                        "str"
+                    },
+                    single_data_transfer_shifted_register.condition().suffix(),
+                    single_data_transfer_shifted_register.b_length().suffix(),
+                    // In this specific case only we output our memory management bit!
+                    // TODO: Is this even needed??
+                    if single_data_transfer_shifted_register.indexing()
+                        == IndexingMode::AddOffsetAfterTransfer
+                        && single_data_transfer_shifted_register.writeback()
+                    {
+                        "T"
+                    } else {
+                        ""
+                    },
+                    single_data_transfer_shifted_register.rd_dest().to_string(),
+                    single_data_transfer_shifted_register.addressing_mode(),
+                )
+            }
+            // Maybe there is some way to actually encode this?
+            OpCode::Undefined(undefined) => format!(
+                "@ Undefined Instruction, raw hex is 0x{:08X}",
+                undefined.raw_value()
+            ),
+            OpCode::BlockDataTransfer(block_data_transfer) => format!(
+                "{}{}{} {}{}, {}{}",
+                if block_data_transfer.load() {
+                    "ldm"
+                } else {
+                    "stm"
+                },
+                block_data_transfer.condition().suffix(),
+                block_data_transfer.addressing_mode_suffix(),
+                block_data_transfer.rn_base().to_string(),
+                if block_data_transfer.writeback() {
+                    "!"
+                } else {
+                    ""
+                },
+                block_data_transfer.register_list_string(),
+                if block_data_transfer.usermode() {
+                    "^"
+                } else {
+                    ""
+                }
+            ),
+            OpCode::Branch(branch) => {
+                // Branch instructions are a bit special since they have a signed offset
+                // so we need to format it differently.
+                let offset = branch.offset();
+                // TODO: We should produce labels here :)  But that is more complex, so I'm skipping it for now.
+                if branch.link() {
+                    format!("bl{} #0x{:08X}", branch.condition().suffix(), offset)
+                } else {
+                    format!("b{} #0x{:08X}", branch.condition().suffix(), offset)
+                }
+            }
+            OpCode::SoftwareInterrupt(software_interrupt) => {
+                format!("swi 0x{:06X}", software_interrupt.immediate())
+            }
+            // For invalid opcodes we will just output a comment!
+            OpCode::Invalid(v) => {
+                format!("@ Invalid Opcode, raw hex is 0x{:08X}", v)
+            }
         }
     }
 }

@@ -1,7 +1,10 @@
 use arbitrary_int::u19;
 use bitbybit::{bitenum, bitfield};
+use zerocopy_derive::IntoBytes;
 
 #[bitenum(u4, exhaustive = true)]
+#[derive(IntoBytes)]
+#[repr(u8)]
 pub enum Register {
     R0 = 0,
     R1 = 1,
@@ -21,7 +24,33 @@ pub enum Register {
     PC = 15, // Program Counter
 }
 
+impl Register {
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Register::R0 => "R0",
+            Register::R1 => "R1",
+            Register::R2 => "R2",
+            Register::R3 => "R3",
+            Register::R4 => "R4",
+            Register::R5 => "R5",
+            Register::R6 => "R6",
+            Register::R7 => "R7",
+            Register::R8 => "R8",
+            Register::R9 => "R9",
+            Register::R10 => "R10",
+            Register::R11 => "R11",
+            Register::R12 => "R12",
+            // Guessing I can use SP/LR/PC here
+            Register::SP => "SP",
+            Register::LR => "LR",
+            Register::PC => "PC",
+        }
+    }
+}
+
 #[bitenum(u3, exhaustive = true)]
+#[derive(IntoBytes)]
+#[repr(u8)]
 pub enum Bank {
     None = 0,
     Fiq = 1,
@@ -34,6 +63,8 @@ pub enum Bank {
 }
 
 #[bitenum(u5, exhaustive = false)]
+#[derive(IntoBytes)]
+#[repr(u8)]
 pub enum Mode {
     Unknown = 0x00,
     User = 0x10,
@@ -46,12 +77,15 @@ pub enum Mode {
 }
 
 #[bitenum(u1, exhaustive = true)]
+#[derive(IntoBytes)]
+#[repr(u8)]
 pub enum ThumbState {
     ARM = 0x00,
     Thumb = 0x01,
 }
 
 #[bitfield(u32)]
+#[derive(IntoBytes)]
 pub struct StatusRegister {
     #[bits(0..=4, rw)]
     pub mode: Option<Mode>,

@@ -9,6 +9,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "825297538d77367557b912770ca3083f778a196054b3ee63b22673c4a3cae0a5"
 
 [[package]]
+name = "arbitrary-int"
+version = "2.0.0"
+source = "git+https://github.com/danlehmann/arbitrary-int.git#8c873ee7ff1195836489a6462ff73156197cc729"
+
+[[package]]
 name = "bios"
 version = "0.0.0"
 
@@ -18,7 +23,7 @@ version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d317eeca82e7d88d606419a430590d83552bdceb899cb29904f63d694344b7fc"
 dependencies = [
- "arbitrary-int",
+ "arbitrary-int 1.3.0",
  "proc-macro2",
  "quote",
  "syn",
@@ -79,9 +84,11 @@ dependencies = [
 name = "engine"
 version = "0.0.0"
 dependencies = [
- "arbitrary-int",
+ "arbitrary-int 2.0.0",
  "bitbybit",
  "bitpatterns",
+ "zerocopy",
+ "zerocopy-derive",
 ]
 
 [[package]]
@@ -507,3 +514,23 @@ name = "windows_x86_64_msvc"
 version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
+
+[[package]]
+name = "zerocopy"
+version = "0.8.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1039dd0d3c310cf05de012d8a39ff557cb0d23087fd44cad61df08fc31907a2f"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.8.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ecf5b4cc5364572d7f4c329661bcc82724222973f2cab6f050a4e5c22f75181"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
