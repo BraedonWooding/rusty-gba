@@ -3,7 +3,51 @@ use bitbybit::{bitenum, bitfield};
 use bitpatterns::{BitPattern, bitpattern};
 use zerocopy_derive::IntoBytes;
 
-use crate::state::Register;
+#[bitenum(u4, exhaustive = true)]
+#[derive(IntoBytes)]
+#[repr(u8)]
+pub enum Register {
+    R0 = 0,
+    R1 = 1,
+    R2 = 2,
+    R3 = 3,
+    R4 = 4,
+    R5 = 5,
+    R6 = 6,
+    R7 = 7,
+    R8 = 8,
+    R9 = 9,
+    R10 = 10,
+    R11 = 11,
+    R12 = 12,
+    SP = 13, // Stack Pointer
+    LR = 14, // Link Register
+    PC = 15, // Program Counter
+}
+
+impl Register {
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Register::R0 => "R0",
+            Register::R1 => "R1",
+            Register::R2 => "R2",
+            Register::R3 => "R3",
+            Register::R4 => "R4",
+            Register::R5 => "R5",
+            Register::R6 => "R6",
+            Register::R7 => "R7",
+            Register::R8 => "R8",
+            Register::R9 => "R9",
+            Register::R10 => "R10",
+            Register::R11 => "R11",
+            Register::R12 => "R12",
+            // Guessing I can use SP/LR/PC here
+            Register::SP => "SP",
+            Register::LR => "LR",
+            Register::PC => "PC",
+        }
+    }
+}
 
 #[derive(Debug, IntoBytes)]
 #[bitenum(u4, exhaustive = true)]

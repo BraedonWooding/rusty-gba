@@ -1,5 +1,5 @@
 [package]
-name = "engine"
+name = "asm_core"
 version = "0.0.0"
 edition = "2024"
 authors = ["Braedon Wooding"]

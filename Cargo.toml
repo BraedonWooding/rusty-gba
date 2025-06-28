@@ -1,3 +1,13 @@
 [workspace]
-members = ["engine", "bios", "sdl2", "webasm"]
+members = [
+    "engine",
+    "bios",
+    "sdl2",
+    "webasm",
+    "generate_dissasm_tests",
+    "asm_core",
+    "gba",
+    "gba_core",
+]
 resolver = "3"
+authors = ["Braedon Wooding"]
